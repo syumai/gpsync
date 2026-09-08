@@ -78,6 +78,50 @@ const options: GoPlaygroundOptions =
     ? parsedOptions as GoPlaygroundOptions
     : defaultOptions;
 
+// Username management
+const USERNAME_STORAGE_KEY = "goplayground-username";
+
+function generateDefaultUsername(): string {
+  return "User " + Math.floor(Math.random() * 100);
+}
+
+function getUsername(): string {
+  try {
+    const saved = window.localStorage.getItem(USERNAME_STORAGE_KEY);
+    if (saved !== null && saved.trim() !== "") {
+      return saved;
+    }
+  } catch (e) {
+    console.warn("Failed to read username from localStorage:", e);
+  }
+  return generateDefaultUsername();
+}
+
+function saveUsername(username: string): void {
+  try {
+    window.localStorage.setItem(USERNAME_STORAGE_KEY, username);
+  } catch (e) {
+    console.warn("Failed to save username to localStorage:", e);
+  }
+}
+
+// Awareness integration
+const userColor = '#' + Math.floor(Math.random() * 16777215).toString(16);
+let currentAwareness: any = null;
+
+function setAwarenessUser(awareness: any, username: string): void {
+  awareness.setLocalStateField('user', {
+    name: username,
+    color: userColor,
+  });
+}
+
+function updateAwarenessUsername(username: string): void {
+  if (currentAwareness) {
+    setAwarenessUser(currentAwareness, username);
+  }
+}
+
 // DOM elements
 const gpResult = document.getElementById("gpResult") as HTMLDivElement;
 const gpOptions = document.getElementById("gpOptions") as HTMLDivElement;
@@ -234,6 +278,10 @@ function initOptionsForm(): void {
     input.value = value.toString();
   }
 
+  // Initialize username field from localStorage
+  const usernameInput = (gpOptionsForm as any).username as HTMLInputElement;
+  usernameInput.value = getUsername();
+
   gpOptionsForm.addEventListener("submit", (e: Event) => {
     e.preventDefault();
     for (const key of optionKeys) {
@@ -253,6 +301,12 @@ function initOptionsForm(): void {
       "goplayground-options",
       JSON.stringify(options)
     );
+
+    // Save username and update awareness
+    const username = usernameInput.value.trim() || generateDefaultUsername();
+    usernameInput.value = username;
+    saveUsername(username);
+    updateAwarenessUsername(username);
   });
 
   applyOptions();
@@ -375,10 +429,8 @@ function initCollaborativeEditing(): void {
   const binding: CodemirrorBinding = new CodemirrorBinding(ytext, editor, provider.awareness);
 
   // Set up awareness (cursor sharing)
-  provider.awareness.setLocalStateField('user', {
-    name: 'User ' + Math.floor(Math.random() * 100),
-    color: '#' + Math.floor(Math.random() * 16777215).toString(16)
-  });
+  currentAwareness = provider.awareness;
+  setAwarenessUser(provider.awareness, getUsername());
 
   // Load shared content if provided
   if (sharedContentId && sharedContentId.trim() !== '') {

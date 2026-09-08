@@ -107,6 +107,12 @@ export const roomTemplate = (data: RoomTemplateData): string => {
             <input type="number" name="tabSize">
           </label>
         </div>
+        <div>
+          <label>
+            Username
+            <input type="text" name="username" maxlength="20">
+          </label>
+        </div>
         <button>Save</button>
       </form>
     </div>
