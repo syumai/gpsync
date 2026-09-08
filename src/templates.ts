@@ -85,6 +85,7 @@ export const roomTemplate = (data: RoomTemplateData): string => {
   </header>
   <main class="app">
     <textarea id="gpBody" class="code-body"></textarea>
+    <div id="gpResizer" class="resizer" role="separator" aria-orientation="horizontal" aria-label="Resize editor"></div>
     <div id="gpResult" class="result"></div>
     <div id="gpOptions" class="options hidden">
       <form id="gpOptionsForm" action="#">

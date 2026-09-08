@@ -258,6 +258,84 @@ function initOptionsForm(): void {
   applyOptions();
 }
 
+// Resizer for adjusting the height of the editor / result panel split
+const RESULT_HEIGHT_STORAGE_KEY = "goplayground-result-height";
+
+function initResizer(): void {
+  const main = document.querySelector("main.app") as HTMLElement | null;
+  const resizer = document.getElementById("gpResizer") as HTMLElement | null;
+  if (!main || !resizer) return;
+
+  // Restore a previously saved result panel height, if any.
+  const savedHeight: string | null = window.localStorage.getItem(RESULT_HEIGHT_STORAGE_KEY);
+  if (savedHeight !== null) {
+    const parsed: number = parseFloat(savedHeight);
+    if (!isNaN(parsed)) {
+      main.style.setProperty("--result-height", `${parsed}px`);
+    }
+  }
+
+  const minResult = 50;
+  const editorMinHeight = 100;
+
+  function getMaxResult(): number {
+    return main!.clientHeight - resizer!.offsetHeight - editorMinHeight;
+  }
+
+  function getCurrentResultHeight(): number {
+    const value = getComputedStyle(main!).getPropertyValue("--result-height");
+    return parseFloat(value);
+  }
+
+  function setResultHeight(height: number): void {
+    main!.style.setProperty("--result-height", `${height}px`);
+  }
+
+  let dragging = false;
+  let startY = 0;
+  let startHeight = 0;
+
+  resizer.addEventListener("pointerdown", (e: PointerEvent) => {
+    dragging = true;
+    resizer.setPointerCapture(e.pointerId);
+    startY = e.clientY;
+    startHeight = getCurrentResultHeight();
+    resizer.classList.add("dragging");
+  });
+
+  resizer.addEventListener("pointermove", (e: PointerEvent) => {
+    if (!dragging) return;
+    const newHeight: number = startHeight + (startY - e.clientY);
+    const maxResult: number = getMaxResult();
+    const clamped: number = Math.min(Math.max(newHeight, minResult), maxResult);
+    setResultHeight(clamped);
+    window.editor.refresh();
+  });
+
+  function endDrag(e: PointerEvent): void {
+    if (!dragging) return;
+    dragging = false;
+    resizer!.classList.remove("dragging");
+    resizer!.releasePointerCapture(e.pointerId);
+    window.localStorage.setItem(
+      RESULT_HEIGHT_STORAGE_KEY,
+      getCurrentResultHeight().toString()
+    );
+    window.editor.refresh();
+  }
+
+  resizer.addEventListener("pointerup", endDrag);
+  resizer.addEventListener("pointercancel", endDrag);
+
+  window.addEventListener("resize", () => {
+    const maxResult: number = getMaxResult();
+    const current: number = getCurrentResultHeight();
+    if (current > maxResult) {
+      setResultHeight(Math.max(maxResult, minResult));
+    }
+  });
+}
+
 const gpOptionsBtn = document.getElementById("gpOptionsBtn") as HTMLButtonElement;
 gpOptionsBtn.addEventListener("click", () => {
   const closedLabel = "Options";
@@ -332,7 +410,8 @@ function init(): void {
   initGoPlayground();
   applyGotipOption();
   initOptionsForm();
-  
+  initResizer();
+
   // Wait for CodeMirror to be fully initialized
   setTimeout(() => {
     initCollaborativeEditing();
